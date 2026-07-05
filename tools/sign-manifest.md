@@ -8,24 +8,23 @@ You do **not** edit the manifest directly. The sign step reads your **`config.en
 builds the manifest body from it, signs it, and writes `manifest.json`. You commit
 only the signed `manifest.json`.
 
-> The sign tool is the `mt-manifest` CLI from MoltenTech. The final form ships as a
-> small Docker image (`moltentech/mt-manifest`, **not published yet**) so you don't
-> need Node installed. **Until then, a working prototype lives in this repo** —
-> `tools/mt-manifest.mjs` — usable with any Node 20+:
+> The sign tool is the `mt-manifest` CLI, shipped as a small Docker image
+> (`ghcr.io/w2vy/mt-manifest`) so you don't need Node installed — you already have
+> Docker for the agent. The `docker run` commands below are the recommended path.
+>
+> No Docker? A byte-compatible prototype lives in this repo — `tools/mt-manifest.mjs`,
+> usable with any Node 20+:
 >
 > ```sh
 > node tools/mt-manifest.mjs keygen    # once
 > node tools/mt-manifest.mjs sign      # config.env -> manifest.json
 > node tools/mt-manifest.mjs verify    # re-check
 > ```
->
-> Its output is byte-compatible with MoltenTech's real verifier. The `docker run`
-> commands below are the future form — same subcommands, no Node needed.
 
 ## One-time: generate your signing key
 
 ```sh
-docker run --rm -it -v "$PWD:/work" -w /work moltentech/mt-manifest keygen
+docker run --rm -it -v "$PWD:/work" ghcr.io/w2vy/mt-manifest keygen
 ```
 
 Writes `manifest-key.pem` (**KEEP SECRET — never commit; it is `.gitignore`d**) and
@@ -38,7 +37,8 @@ pinned for you.
 2. Render + sign from it:
 
    ```sh
-   docker run --rm -it -v "$PWD:/work" -w /work moltentech/mt-manifest sign
+   docker run --rm -it -v "$PWD:/work" ghcr.io/w2vy/mt-manifest \
+     sign --key manifest-key.pem --from-config config.env --out manifest.json
    ```
 
    This reads `config.env` + `manifest-key.pem`, and writes a fresh signed

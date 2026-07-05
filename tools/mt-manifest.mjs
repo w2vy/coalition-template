@@ -13,9 +13,9 @@
 //
 // Flags (all optional): --config config.env  --key manifest-key.pem  --out manifest.json
 //
-// The final tool will live in operator/protocol (cli.ts) and ship as the
-// moltentech/mt-manifest Docker image; this prototype proves the config.env->body
-// mapping and cross-verifies before we touch the operator repo.
+// The canonical tool lives in operator/protocol (cli.ts) and ships as the
+// ghcr.io/w2vy/mt-manifest Docker image; this in-repo prototype is the no-Docker
+// fallback (byte-compatible output).
 // ─────────────────────────────────────────────────────────────────────────────
 import {
   createPrivateKey,
