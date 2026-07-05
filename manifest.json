@@ -1,0 +1,3 @@
+{
+  "_placeholder": "NOT A REAL MANIFEST. Replace this whole file with the SIGNED output of the manifest sign step (see tools/sign-manifest.md). A signed manifest has a top-level \"signature\" field. Never hand-edit a signed manifest — change manifest.body.json and re-sign."
+}
