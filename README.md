@@ -31,8 +31,10 @@ Commit the generated `manifest.json` to your fork (paste it in via the pencil ic
 `git add manifest.json && git commit && git push`).
 
 ### 5. Deploy on Flux
-Register a Flux app pointing at your fork (Flux Git deployment). During that one-time
-setup, put your **secrets** in the Flux **encrypted** environment (next section).
+Register a Flux app pointing at your fork (Flux Git deployment) and set your **secrets**
+in the Flux **encrypted** environment (next section). **Full walkthrough:
+[`docs/deploy-on-flux.md`](docs/deploy-on-flux.md)** — app parameters, secret env, and
+how to verify.
 
 Done. To change anything later (prices, tiers, description), edit **`config.env`**,
 re-sign, commit — Flux redeploys. **You never touch the Flux environment again unless
