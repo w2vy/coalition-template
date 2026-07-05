@@ -91,3 +91,8 @@ Orbit re-pulls. **You don't touch the Flux environment again unless you rotate a
   step, commit `manifest.json`, redeploy.
 - **Redeploy trigger** — note whether a `git push` alone redeploys, or you must trigger
   Orbit (via its management port / the Flux UI). This determines how hands-off updates are.
+- **Env/secret updates — cost & layer.** Confirm whether changing a secret is a **live
+  Orbit action** (via its management UI / secrets file) or requires a **paid, signed
+  Flux app-spec update** (`fluxappupdate`). If it's live, secret rotation and env tweaks
+  are cheap — which relaxes the "put it in encrypted env and never touch it" model.
+  Also note whether an env change **restarts** the container or hot-reloads.
