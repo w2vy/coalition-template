@@ -8,9 +8,19 @@ You do **not** edit the manifest directly. The sign step reads your **`config.en
 builds the manifest body from it, signs it, and writes `manifest.json`. You commit
 only the signed `manifest.json`.
 
-> The sign tool is the `mt-manifest` CLI from MoltenTech, delivered as a small Docker
-> image so you don't need Node installed — you already have Docker for the agent.
-> **(Image `moltentech/mt-manifest` is a placeholder — not published yet.)**
+> The sign tool is the `mt-manifest` CLI from MoltenTech. The final form ships as a
+> small Docker image (`moltentech/mt-manifest`, **not published yet**) so you don't
+> need Node installed. **Until then, a working prototype lives in this repo** —
+> `tools/mt-manifest.mjs` — usable with any Node 20+:
+>
+> ```sh
+> node tools/mt-manifest.mjs keygen    # once
+> node tools/mt-manifest.mjs sign      # config.env -> manifest.json
+> node tools/mt-manifest.mjs verify    # re-check
+> ```
+>
+> Its output is byte-compatible with MoltenTech's real verifier. The `docker run`
+> commands below are the future form — same subcommands, no Node needed.
 
 ## One-time: generate your signing key
 
