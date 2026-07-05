@@ -1,6 +1,7 @@
 # Coalition template image — built by Flux (Orbit) directly from your repo. There is
 # NO published image of this code; Orbit clones this repo and builds it on the node.
-# The vendored coalition + protocol source lives in app/ (see tools/vendor.sh).
+# The vendored coalition + protocol source lives in app/ (maintained upstream; not
+# something operators edit).
 #
 # DETERMINISM: pin the base by DIGEST in production so every Flux node builds a
 # byte-identical image, e.g. FROM node:22.11.0-bookworm-slim@sha256:<digest>.
