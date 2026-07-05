@@ -4,12 +4,13 @@ Your **manifest** is your signed, public self-description. MoltenTech pulls it f
 your coalition at `/.well-known/mt-provider.json`. You sign it **on your own machine**
 — the signing key never enters this repo, CI, or Flux.
 
-You edit `manifest.body.json` (plain fields), then run the sign step to produce the
-signed `manifest.json`. You commit **only** the signed `manifest.json`.
+You do **not** edit the manifest directly. The sign step reads your **`config.env`**,
+builds the manifest body from it, signs it, and writes `manifest.json`. You commit
+only the signed `manifest.json`.
 
-> The sign tool is the `mt-manifest` CLI from MoltenTech. The one-liner below uses a
-> containerized version so you don't need Node installed. **(Image name is a
-> placeholder — not published yet.)**
+> The sign tool is the `mt-manifest` CLI from MoltenTech, delivered as a small Docker
+> image so you don't need Node installed — you already have Docker for the agent.
+> **(Image `moltentech/mt-manifest` is a placeholder — not published yet.)**
 
 ## One-time: generate your signing key
 
@@ -17,25 +18,39 @@ signed `manifest.json`. You commit **only** the signed `manifest.json`.
 docker run --rm -it -v "$PWD:/work" -w /work moltentech/mt-manifest keygen
 ```
 
-This writes `manifest-key.pem` (**KEEP SECRET — never commit; it is .gitignored**)
-and prints your public key. That public key must match the `manifestPubkey`
-MoltenTech pinned for you.
+Writes `manifest-key.pem` (**KEEP SECRET — never commit; it is `.gitignore`d**) and
+prints your public key. That public key must match the `manifestPubkey` MoltenTech
+pinned for you.
 
-## Each time you change your manifest (tiers, price, coalition URL, contact…)
+## Each time you change your offering (tiers, price, coalition URL, contact…)
 
-1. Edit `manifest.body.json`.
-2. Re-sign:
+1. Edit **`config.env`** (the one file).
+2. Render + sign from it:
 
    ```sh
-   docker run --rm -it -v "$PWD:/work" -w /work moltentech/mt-manifest \
-     sign --key manifest-key.pem --in manifest.body.json --out manifest.json
+   docker run --rm -it -v "$PWD:/work" -w /work moltentech/mt-manifest sign
    ```
 
-3. Commit the updated `manifest.json` and push. Flux redeploys with the new manifest.
+   This reads `config.env` + `manifest-key.pem`, and writes a fresh signed
+   `manifest.json`.
+3. Commit `config.env` + `manifest.json` and push. Flux redeploys with the new manifest.
+
+## How config.env maps into the manifest
+
+| config.env | manifest field |
+|------------|----------------|
+| `PROVIDER_SLUG` / `PROVIDER_NAME` / `PROVIDER_LOCATION` / `PROVIDER_DESCRIPTION` / `PROVIDER_CONTACT` | `provider.*` |
+| `COALITION_URL` | `coalitionUrl` |
+| `TIERS_JSON` → each `{tier, capacity, storagePool}` (price dropped) | `tiers[]` |
+| `TRIAL_DAYS` | `trialDays` |
+| `MANUAL_APPROVAL` | `manualApproval` |
+| *(tool defaults)* | `serviceFlags`, `schemaVersion`, `trustedSelfClaim:false` |
+
+`priceCents` from `TIERS_JSON` is **not** put in the manifest — it feeds your runtime
+prices only. This is why tiers are defined once and never drift.
 
 ## Notes
 
 - **Never hand-edit `manifest.json`.** The signature covers the whole body; editing it
-  by hand invalidates the signature. Always change `manifest.body.json` and re-sign.
-- `coalitionUrl` in `manifest.body.json` must be your Flux app's public URL.
+  by hand invalidates the signature. Change `config.env` and re-sign.
 - Re-signing does **not** rotate your key — you keep the same `manifest-key.pem`.

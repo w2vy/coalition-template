@@ -17,7 +17,8 @@ const PORT = Number(process.env.PORT || 8088);
 const MANIFEST_PATH = process.env.MANIFEST_PATH || './manifest.json';
 
 // Non-secret config the operator edits in config.env (committed to the repo).
-const PUBLIC_CONFIG = ['PROVIDER_SLUG', 'MT_BASE_URL', 'MT_PUBKEY', 'OWNER_ADDRESS', 'TIER_PRICES_JSON'];
+// TIER_PRICES_JSON is NOT edited directly — the entrypoint derives it from TIERS_JSON.
+const PUBLIC_CONFIG = ['PROVIDER_SLUG', 'MT_BASE_URL', 'MT_PUBKEY', 'OWNER_ADDRESS', 'TIERS_JSON'];
 // Secrets — set ONCE in the Flux encrypted deployment env, never in this repo.
 const SECRETS = ['COALITION_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'AGENT_KEY', 'SESSION_SECRET'];
 
@@ -48,6 +49,7 @@ const server = http.createServer((req, res) => {
       configComplete: missingPublic.length === 0,
       secretsPresent: missingSecrets.length === 0,
       manifestSigned,
+      tierPricesDerived: process.env.TIER_PRICES_JSON ? JSON.parse(process.env.TIER_PRICES_JSON) : null,
     }, null, 2) + '\n');
     return;
   }

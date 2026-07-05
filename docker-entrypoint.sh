@@ -22,6 +22,14 @@ if [ -f /app/config.env ]; then
   done < /app/config.env
 fi
 
+# Derive TIER_PRICES_JSON (what the coalition consumes) from the single TIERS_JSON
+# source of truth, so prices are defined in exactly one place. Skip if the operator
+# (or Flux env) already set it explicitly — same "already-set wins" rule as above.
+if [ -z "$(printenv TIER_PRICES_JSON 2>/dev/null)" ] && [ -n "${TIERS_JSON:-}" ]; then
+  TIER_PRICES_JSON=$(TIERS_JSON="$TIERS_JSON" node -e 'const t=JSON.parse(process.env.TIERS_JSON||"[]");const o={};for(const x of t)o[x.tier]=x.priceCents;process.stdout.write(JSON.stringify(o));')
+  export TIER_PRICES_JSON
+fi
+
 # Optional: allow the signed manifest to arrive via env (image-based deploys) when
 # it is not committed as a file. In the git-deploy template it IS committed, so this
 # is a no-op unless MANIFEST_JSON is set and no file exists.
