@@ -9,9 +9,11 @@
 //
 //   node tools/mt-manifest.mjs keygen            # once: write manifest-key.pem + print pubkey
 //   node tools/mt-manifest.mjs sign              # config.env + key -> signed manifest.json
+//   node tools/mt-manifest.mjs env               # config.env + secrets.env + manifest.json -> env.json (Flux import)
 //   node tools/mt-manifest.mjs verify            # re-verify manifest.json
 //
-// Flags (all optional): --config config.env  --key manifest-key.pem  --out manifest.json
+// Flags (all optional): --config config.env  --secrets secrets.env  --manifest manifest.json
+//                       --key manifest-key.pem  --out <manifest.json | env.json>
 //
 // The canonical tool lives in operator/protocol (cli.ts) and ships as the
 // ghcr.io/w2vy/mt-manifest Docker image; this in-repo prototype is the no-Docker
@@ -164,12 +166,83 @@ switch (cmd) {
     console.log("Commit config.env + manifest.json and push.");
     break;
   }
+  case "env": {
+    // Assemble the Flux "Import Environment Variables" blob (JSON array of "KEY=value")
+    // from config.env + secrets.env + the signed manifest — mirrors protocol/src/cli.ts.
+    const secretsPath = flag("--secrets", "secrets.env");
+    const manifestPath = flag("--manifest", "manifest.json");
+    const outPath = flag("--out", "env.json");
+
+    const config = parseConfigEnv(CONFIG);
+    const secrets = parseConfigEnv(secretsPath);
+
+    // Verify the manifest is validly signed BEFORE shipping it as env — refuse a
+    // placeholder or tampered/unsigned manifest.
+    let manifestObj;
+    try {
+      manifestObj = JSON.parse(readFileSync(manifestPath, "utf8"));
+    } catch {
+      die(`could not read ${manifestPath} — run 'sign' first`);
+    }
+    if (!verifyManifestObject(manifestObj)) die(`${manifestPath}: manifest signature invalid — run 'sign' first`);
+
+    const pairs = [];
+    const put = (k, v) => {
+      if (v != null && v !== "") pairs.push(`${k}=${v}`);
+    };
+    const needCfg = (k) => config[k] || die(`config.env: ${k} is required`);
+    const needSecret = (k) => secrets[k] || die(`secrets.env: ${k} is required`);
+
+    // Non-secret runtime config (required + optional passthrough).
+    put("PROVIDER_SLUG", needCfg("PROVIDER_SLUG"));
+    put("MT_BASE_URL", needCfg("MT_BASE_URL"));
+    for (const k of ["MT_PUBKEY", "OWNER_ADDRESS", "PORT", "TRIAL_DAYS", "SESSION_TTL_HOURS", "STATS_WINDOW_DAYS"]) {
+      put(k, config[k]);
+    }
+
+    // TIER_PRICES_JSON (runtime pricing) derived from TIERS_JSON's per-tier priceCents.
+    let tiers;
+    try {
+      tiers = JSON.parse(needCfg("TIERS_JSON"));
+    } catch {
+      die("config.env: TIERS_JSON is not valid JSON");
+    }
+    if (!Array.isArray(tiers) || tiers.length === 0) die("config.env: TIERS_JSON must be a non-empty array");
+    const prices = {};
+    for (const t of tiers) {
+      if (!t || typeof t.tier !== "string") die('config.env: each TIERS_JSON entry needs a "tier"');
+      if (!Number.isInteger(t.priceCents)) die(`config.env: TIERS_JSON (${t?.tier}): integer "priceCents" is required`);
+      prices[t.tier] = t.priceCents;
+    }
+    put("TIER_PRICES_JSON", JSON.stringify(prices));
+
+    // Secrets (required + optional SESSION_SECRET).
+    put("AGENT_KEY", needSecret("AGENT_KEY"));
+    put("COALITION_KEY", needSecret("COALITION_KEY"));
+    put("STRIPE_SECRET_KEY", needSecret("STRIPE_SECRET_KEY"));
+    put("STRIPE_WEBHOOK_SECRET", needSecret("STRIPE_WEBHOOK_SECRET"));
+    put("SESSION_SECRET", secrets.SESSION_SECRET);
+
+    // The signed manifest, minified, served at /.well-known/mt-provider.json.
+    put("MANIFEST_JSON", JSON.stringify(manifestObj));
+
+    writeFileSync(outPath, JSON.stringify(pairs, null, 2) + "\n", { mode: 0o600 });
+    console.error(
+      `Wrote ${outPath} (${pairs.length} vars). Contains SECRETS — do NOT commit; ` +
+        `import into your Flux app's Environment Variables.`
+    );
+    break;
+  }
   case "verify": {
     const ok = verifyManifestObject(JSON.parse(readFileSync(OUT, "utf8")));
     console.log(ok ? `OK — ${OUT} signature valid` : `FAILED — ${OUT} signature invalid`);
     process.exit(ok ? 0 : 1);
   }
   default:
-    console.log("usage: node tools/mt-manifest.mjs <keygen|sign|verify> [--config config.env] [--key manifest-key.pem] [--out manifest.json]");
+    console.log(
+      "usage: node tools/mt-manifest.mjs <keygen|sign|env|verify>\n" +
+        "  [--config config.env] [--secrets secrets.env] [--manifest manifest.json]\n" +
+        "  [--key manifest-key.pem] [--out <manifest.json|env.json>]"
+    );
     process.exit(cmd ? 1 : 0);
 }
